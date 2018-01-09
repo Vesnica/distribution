@@ -108,7 +108,7 @@ func (bs *blobStore) Enumerate(ctx context.Context, ingester func(dgst digest.Di
 
 		digest, err := digestFromPath(currentPath)
 		if err != nil {
-			return err
+			return nil
 		}
 
 		return ingester(digest)
