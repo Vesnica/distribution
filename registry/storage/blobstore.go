@@ -90,7 +90,7 @@ func (bs *blobStore) Enumerate(ctx context.Context, ingester func(dgst digest.Di
 
 	specPath, err := pathFor(blobsPathSpec{})
 	if err != nil {
-		return err
+		return nil
 	}
 
 	err = Walk(ctx, bs.driver, specPath, func(fileInfo driver.FileInfo) error {
