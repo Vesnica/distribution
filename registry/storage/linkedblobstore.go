@@ -234,7 +234,7 @@ func (lbs *linkedBlobStore) Delete(ctx context.Context, dgst digest.Digest) erro
 func (lbs *linkedBlobStore) Enumerate(ctx context.Context, ingestor func(digest.Digest) error) error {
 	rootPath, err := pathFor(lbs.linkDirectoryPathSpec)
 	if err != nil {
-		return err
+		return nil
 	}
 	err = Walk(ctx, lbs.blobStore.driver, rootPath, func(fileInfo driver.FileInfo) error {
 		// exit early if directory...
@@ -252,7 +252,7 @@ func (lbs *linkedBlobStore) Enumerate(ctx context.Context, ingestor func(digest.
 		// read the digest found in link
 		digest, err := lbs.blobStore.readlink(ctx, filePath)
 		if err != nil {
-			return err
+			return nil
 		}
 
 		// ensure this conforms to the linkPathFns
@@ -262,19 +262,19 @@ func (lbs *linkedBlobStore) Enumerate(ctx context.Context, ingestor func(digest.
 			if err == distribution.ErrBlobUnknown {
 				return nil
 			}
-			return err
+			return nil
 		}
 
 		err = ingestor(digest)
 		if err != nil {
-			return err
+			return nil
 		}
 
 		return nil
 	})
 
 	if err != nil {
-		return err
+		return nil
 	}
 
 	return nil
