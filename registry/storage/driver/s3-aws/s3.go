@@ -565,8 +565,9 @@ func (d *driver) Writer(ctx context.Context, path string, append bool) (storaged
 // Stat retrieves the FileInfo for the given path, including the current size
 // in bytes and the creation time.
 func (d *driver) Stat(ctx context.Context, path string) (storagedriver.FileInfo, error) {
+	var resp *s3.ListObjectsOutput
 	for i := 0; i < retry; i++ {
-		resp, err := d.S3.ListObjects(&s3.ListObjectsInput{
+		r, err := d.S3.ListObjects(&s3.ListObjectsInput{
 			Bucket:  aws.String(d.Bucket),
 			Prefix:  aws.String(d.s3Path(path)),
 			MaxKeys: aws.Int64(1),
@@ -577,6 +578,7 @@ func (d *driver) Stat(ctx context.Context, path string) (storagedriver.FileInfo,
 			}
 			return nil, err
 		}
+		resp = r
 		break
 	}
 	fi := storagedriver.FileInfoFields{
@@ -614,8 +616,9 @@ func (d *driver) List(ctx context.Context, opath string) ([]string, error) {
 	if d.s3Path("") == "" {
 		prefix = "/"
 	}
+	var resp *s3.ListObjectsOutput
 	for i := 0; i < retry; i++ {
-		resp, err := d.S3.ListObjects(&s3.ListObjectsInput{
+		r, err := d.S3.ListObjects(&s3.ListObjectsInput{
 			Bucket:    aws.String(d.Bucket),
 			Prefix:    aws.String(d.s3Path(path)),
 			Delimiter: aws.String("/"),
@@ -627,6 +630,7 @@ func (d *driver) List(ctx context.Context, opath string) ([]string, error) {
 			}
 			return nil, parseError(opath, err)
 		}
+		resp = r
 		break
 	}
 	files := []string{}
@@ -799,19 +803,21 @@ func (d *driver) Delete(ctx context.Context, path string) error {
 	}
 ListLoop:
 	for {
+		var resp *s3.ListObjectsOutput
 		// list all the objects
 		for i := 0; i < retry; i++ {
-			resp, err := d.S3.ListObjects(listObjectsInput)
+			r, err := d.S3.ListObjects(listObjectsInput)
 
 			// resp.Contents can only be empty on the first call
 			// if there were no more results to return after the first call, resp.IsTruncated would have been false
 			// and the loop would be exited without recalling ListObjects
-			if err != nil || len(resp.Contents) == 0 {
+			if err != nil || len(r.Contents) == 0 {
 				if i < retry {
 					continue
 				}
 				return storagedriver.PathNotFoundError{Path: path}
 			}
+			resp = r
 			break
 		}
 
