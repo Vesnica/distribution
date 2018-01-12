@@ -669,6 +669,7 @@ func (d *driver) List(ctx context.Context, opath string) ([]string, error) {
 		}
 	}
 
+	/*
 	if opath != "/" {
 		if len(files) == 0 && len(directories) == 0 {
 			// Treat empty response as missing directory, since we don't actually
@@ -676,6 +677,7 @@ func (d *driver) List(ctx context.Context, opath string) ([]string, error) {
 			return nil, storagedriver.PathNotFoundError{Path: opath}
 		}
 	}
+	*/
 
 	return append(files, directories...), nil
 }
