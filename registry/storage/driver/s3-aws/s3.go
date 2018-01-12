@@ -648,7 +648,7 @@ func (d *driver) List(ctx context.Context, opath string) ([]string, error) {
 
 		if *resp.IsTruncated {
 			for i := 0; i < retry; i++ {
-				resp, err = d.S3.ListObjects(&s3.ListObjectsInput{
+				r, err := d.S3.ListObjects(&s3.ListObjectsInput{
 					Bucket:    aws.String(d.Bucket),
 					Prefix:    aws.String(d.s3Path(path)),
 					Delimiter: aws.String("/"),
@@ -661,6 +661,7 @@ func (d *driver) List(ctx context.Context, opath string) ([]string, error) {
 					}
 					return nil, err
 				}
+				resp = r
 				break
 			}
 		} else {
