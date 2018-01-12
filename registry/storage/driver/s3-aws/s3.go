@@ -812,13 +812,13 @@ ListLoop:
 		}
 	}
 
-	// need to chunk objects into groups of 1000 per s3 restrictions
+	// need to chunk objects into groups of 100 per s3 restrictions
 	total := len(s3Objects)
-	for i := 0; i < total; i += 1000 {
+	for i := 0; i < total; i += 100 {
 		_, err := d.S3.DeleteObjects(&s3.DeleteObjectsInput{
 			Bucket: aws.String(d.Bucket),
 			Delete: &s3.Delete{
-				Objects: s3Objects[i:min(i+1000, total)],
+				Objects: s3Objects[i:min(i+100, total)],
 				Quiet:   aws.Bool(false),
 			},
 		})
