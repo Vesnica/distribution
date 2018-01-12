@@ -51,6 +51,8 @@ const maxChunkSize = 5 << 30
 
 const defaultChunkSize = 2 * minChunkSize
 
+const retry = 10
+
 const (
 	// defaultMultipartCopyChunkSize defines the default chunk size for all
 	// but the last Upload Part - Copy operation of a multipart copy.
@@ -563,15 +565,20 @@ func (d *driver) Writer(ctx context.Context, path string, append bool) (storaged
 // Stat retrieves the FileInfo for the given path, including the current size
 // in bytes and the creation time.
 func (d *driver) Stat(ctx context.Context, path string) (storagedriver.FileInfo, error) {
-	resp, err := d.S3.ListObjects(&s3.ListObjectsInput{
-		Bucket:  aws.String(d.Bucket),
-		Prefix:  aws.String(d.s3Path(path)),
-		MaxKeys: aws.Int64(1),
-	})
-	if err != nil {
-		return nil, err
+	for i := 0; i < retry; i++ {
+		resp, err := d.S3.ListObjects(&s3.ListObjectsInput{
+			Bucket:  aws.String(d.Bucket),
+			Prefix:  aws.String(d.s3Path(path)),
+			MaxKeys: aws.Int64(1),
+		})
+		if err != nil {
+			if i < retry {
+				continue
+			}
+			return nil, err
+		}
+		break
 	}
-
 	fi := storagedriver.FileInfoFields{
 		Path: path,
 	}
@@ -607,17 +614,21 @@ func (d *driver) List(ctx context.Context, opath string) ([]string, error) {
 	if d.s3Path("") == "" {
 		prefix = "/"
 	}
-
-	resp, err := d.S3.ListObjects(&s3.ListObjectsInput{
-		Bucket:    aws.String(d.Bucket),
-		Prefix:    aws.String(d.s3Path(path)),
-		Delimiter: aws.String("/"),
-		MaxKeys:   aws.Int64(listMax),
-	})
-	if err != nil {
-		return nil, parseError(opath, err)
+	for i := 0; i < retry; i++ {
+		resp, err := d.S3.ListObjects(&s3.ListObjectsInput{
+			Bucket:    aws.String(d.Bucket),
+			Prefix:    aws.String(d.s3Path(path)),
+			Delimiter: aws.String("/"),
+			MaxKeys:   aws.Int64(listMax),
+		})
+		if err != nil {
+			if i < retry {
+				continue
+			}
+			return nil, parseError(opath, err)
+		}
+		break
 	}
-
 	files := []string{}
 	directories := []string{}
 
@@ -632,15 +643,21 @@ func (d *driver) List(ctx context.Context, opath string) ([]string, error) {
 		}
 
 		if *resp.IsTruncated {
-			resp, err = d.S3.ListObjects(&s3.ListObjectsInput{
-				Bucket:    aws.String(d.Bucket),
-				Prefix:    aws.String(d.s3Path(path)),
-				Delimiter: aws.String("/"),
-				MaxKeys:   aws.Int64(listMax),
-				Marker:    resp.NextMarker,
-			})
-			if err != nil {
-				return nil, err
+			for i := 0; i < retry; i++ {
+				resp, err = d.S3.ListObjects(&s3.ListObjectsInput{
+					Bucket:    aws.String(d.Bucket),
+					Prefix:    aws.String(d.s3Path(path)),
+					Delimiter: aws.String("/"),
+					MaxKeys:   aws.Int64(listMax),
+					Marker:    resp.NextMarker,
+				})
+				if err != nil {
+					if i < retry {
+						continue
+					}
+					return nil, err
+				}
+				break
 			}
 		} else {
 			break
@@ -783,13 +800,19 @@ func (d *driver) Delete(ctx context.Context, path string) error {
 ListLoop:
 	for {
 		// list all the objects
-		resp, err := d.S3.ListObjects(listObjectsInput)
+		for i := 0; i < retry; i++ {
+			resp, err := d.S3.ListObjects(listObjectsInput)
 
-		// resp.Contents can only be empty on the first call
-		// if there were no more results to return after the first call, resp.IsTruncated would have been false
-		// and the loop would be exited without recalling ListObjects
-		if err != nil || len(resp.Contents) == 0 {
-			return storagedriver.PathNotFoundError{Path: path}
+			// resp.Contents can only be empty on the first call
+			// if there were no more results to return after the first call, resp.IsTruncated would have been false
+			// and the loop would be exited without recalling ListObjects
+			if err != nil || len(resp.Contents) == 0 {
+				if i < retry {
+					continue
+				}
+				return storagedriver.PathNotFoundError{Path: path}
+			}
+			break
 		}
 
 		for _, key := range resp.Contents {
