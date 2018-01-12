@@ -68,7 +68,7 @@ const (
 )
 
 // listMax is the largest amount of objects you can request from S3 in a list call
-const listMax = 1000
+const listMax = 100
 
 // noStorageClass defines the value to be used if storage class is not supported by the S3 endpoint
 const noStorageClass = "NONE"
