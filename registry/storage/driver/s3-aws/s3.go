@@ -557,7 +557,7 @@ func (d *driver) Writer(ctx context.Context, path string, append bool) (storaged
 		}
 		return d.newWriter(key, *multi.UploadId, resp.Parts), nil
 	}
-	return nil, storagedriver.PathNotFoundError{Path: path}
+	return nil, storagedriver.PathNotFoundError{Path: "Writer: "+path}
 }
 
 // Stat retrieves the FileInfo for the given path, including the current size
@@ -587,7 +587,7 @@ func (d *driver) Stat(ctx context.Context, path string) (storagedriver.FileInfo,
 	} else if len(resp.CommonPrefixes) == 1 {
 		fi.IsDir = true
 	} else {
-		return nil, storagedriver.PathNotFoundError{Path: path}
+		return nil, storagedriver.PathNotFoundError{Path: "Stat: "+path}
 	}
 
 	return storagedriver.FileInfoInternal{FileInfoFields: fi}, nil
@@ -651,7 +651,7 @@ func (d *driver) List(ctx context.Context, opath string) ([]string, error) {
 		if len(files) == 0 && len(directories) == 0 {
 			// Treat empty response as missing directory, since we don't actually
 			// have directories in s3.
-			return nil, storagedriver.PathNotFoundError{Path: opath}
+			return nil, storagedriver.PathNotFoundError{Path: "List: "+opath}
 		}
 	}
 
@@ -789,7 +789,7 @@ ListLoop:
 		// if there were no more results to return after the first call, resp.IsTruncated would have been false
 		// and the loop would be exited without recalling ListObjects
 		if err != nil || len(resp.Contents) == 0 {
-			return storagedriver.PathNotFoundError{Path: path}
+			return storagedriver.PathNotFoundError{Path: "Delete: "+path}
 		}
 
 		for _, key := range resp.Contents {
@@ -881,7 +881,7 @@ func (d *Driver) S3BucketKey(path string) string {
 
 func parseError(path string, err error) error {
 	if s3Err, ok := err.(awserr.Error); ok && s3Err.Code() == "NoSuchKey" {
-		return storagedriver.PathNotFoundError{Path: path}
+		return storagedriver.PathNotFoundError{Path: "parseError: "+path}
 	}
 
 	return err
